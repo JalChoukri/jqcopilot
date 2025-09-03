@@ -9,7 +9,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ language, uploadedFile, cvData }) => {
-  const [activeTab, setActiveTab] = useState<'jobs' | 'insights' | 'enhancer'>('jobs');
+  const [activeTab, setActiveTab] = useState<'jobs' | 'insights' | 'enhancer' | 'details'>('jobs');
   const [selectedCvItem, setSelectedCvItem] = useState<string | null>(null);
 
   if (!cvData) {
@@ -70,6 +70,11 @@ const Dashboard: React.FC<DashboardProps> = ({ language, uploadedFile, cvData })
                 {language === 'fr' ? 'Fichier analysé:' : 'Analyzed file:'} {uploadedFile.name}
               </p>
             )}
+            {cvData.personalInfo.name && (
+              <p className="text-sm text-gray-500">
+                {language === 'fr' ? 'Nom détecté:' : 'Name detected:'} {cvData.personalInfo.name}
+              </p>
+            )}
           </div>
           <div className="p-6">
             <textarea
@@ -95,8 +100,8 @@ const Dashboard: React.FC<DashboardProps> = ({ language, uploadedFile, cvData })
             </h2>
             <p className="text-sm text-gray-500 mt-1">
               {language === 'fr' 
-                ? `${cvData.skills.length} compétences détectées, ${cvData.experience.length} expériences trouvées`
-                : `${cvData.skills.length} skills detected, ${cvData.experience.length} experiences found`
+                ? `${cvData.skills.length} compétences détectées, ${cvData.experience.length} expériences trouvées, ${cvData.yearsOfExperience} ans d'expérience estimés`
+                : `${cvData.skills.length} skills detected, ${cvData.experience.length} experiences found, ${cvData.yearsOfExperience} years of experience estimated`
               }
             </p>
           </div>
@@ -133,6 +138,16 @@ const Dashboard: React.FC<DashboardProps> = ({ language, uploadedFile, cvData })
                 }`}
               >
                 {language === 'fr' ? 'Améliorations' : 'CV Enhancer'}
+              </button>
+              <button
+                onClick={() => setActiveTab('details')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'details'
+                    ? 'border-quebec-blue text-quebec-blue'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {language === 'fr' ? 'Détails' : 'Details'}
               </button>
             </nav>
           </div>
@@ -238,6 +253,121 @@ const Dashboard: React.FC<DashboardProps> = ({ language, uploadedFile, cvData })
                         : 'Click on a bullet point in your CV on the left to receive an AI-powered suggestion here.'
                       }
                     </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'details' && (
+              <div className="space-y-6">
+                {/* Personal Information */}
+                {cvData.personalInfo.name || cvData.personalInfo.email ? (
+                  <div className="p-4 border border-gray-200 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-3">
+                      {language === 'fr' ? 'Informations personnelles' : 'Personal Information'}
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      {cvData.personalInfo.name && (
+                        <p><strong>{language === 'fr' ? 'Nom:' : 'Name:'}</strong> {cvData.personalInfo.name}</p>
+                      )}
+                      {cvData.personalInfo.email && (
+                        <p><strong>{language === 'fr' ? 'Email:' : 'Email:'}</strong> {cvData.personalInfo.email}</p>
+                      )}
+                      {cvData.personalInfo.phone && (
+                        <p><strong>{language === 'fr' ? 'Téléphone:' : 'Phone:'}</strong> {cvData.personalInfo.phone}</p>
+                      )}
+                      {cvData.personalInfo.location && (
+                        <p><strong>{language === 'fr' ? 'Localisation:' : 'Location:'}</strong> {cvData.personalInfo.location}</p>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Skills */}
+                {cvData.skills.length > 0 && (
+                  <div className="p-4 border border-gray-200 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-3">
+                      {language === 'fr' ? 'Compétences détectées' : 'Detected Skills'}
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {cvData.skills.map((skill, index) => (
+                        <span key={index} className="px-2 py-1 bg-quebec-blue text-white text-xs rounded">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Job Titles */}
+                {cvData.jobTitles.length > 0 && (
+                  <div className="p-4 border border-gray-200 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-3">
+                      {language === 'fr' ? 'Titres de poste détectés' : 'Detected Job Titles'}
+                    </h3>
+                    <div className="space-y-1">
+                      {cvData.jobTitles.map((title, index) => (
+                        <p key={index} className="text-sm text-gray-600">• {title}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Companies */}
+                {cvData.companies.length > 0 && (
+                  <div className="p-4 border border-gray-200 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-3">
+                      {language === 'fr' ? 'Entreprises détectées' : 'Detected Companies'}
+                    </h3>
+                    <div className="space-y-1">
+                      {cvData.companies.map((company, index) => (
+                        <p key={index} className="text-sm text-gray-600">• {company}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Education */}
+                {cvData.degrees.length > 0 && (
+                  <div className="p-4 border border-gray-200 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-3">
+                      {language === 'fr' ? 'Formation détectée' : 'Detected Education'}
+                    </h3>
+                    <div className="space-y-1">
+                      {cvData.degrees.map((degree, index) => (
+                        <p key={index} className="text-sm text-gray-600">• {degree}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Languages */}
+                {cvData.languages.length > 0 && (
+                  <div className="p-4 border border-gray-200 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-3">
+                      {language === 'fr' ? 'Langues détectées' : 'Detected Languages'}
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {cvData.languages.map((lang, index) => (
+                        <span key={index} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
+                          {lang}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Certifications */}
+                {cvData.certifications.length > 0 && (
+                  <div className="p-4 border border-gray-200 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-3">
+                      {language === 'fr' ? 'Certifications détectées' : 'Detected Certifications'}
+                    </h3>
+                    <div className="space-y-1">
+                      {cvData.certifications.map((cert, index) => (
+                        <p key={index} className="text-sm text-gray-600">• {cert}</p>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
