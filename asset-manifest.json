@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/jqcopilot/static/css/main.0aaa43e5.css",
-    "main.js": "/jqcopilot/static/js/main.a3973656.js",
+    "main.js": "/jqcopilot/static/js/main.014efd92.js",
     "static/js/453.862a511e.chunk.js": "/jqcopilot/static/js/453.862a511e.chunk.js",
     "index.html": "/jqcopilot/index.html",
     "main.0aaa43e5.css.map": "/jqcopilot/static/css/main.0aaa43e5.css.map",
-    "main.a3973656.js.map": "/jqcopilot/static/js/main.a3973656.js.map",
+    "main.014efd92.js.map": "/jqcopilot/static/js/main.014efd92.js.map",
     "453.862a511e.chunk.js.map": "/jqcopilot/static/js/453.862a511e.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.0aaa43e5.css",
-    "static/js/main.a3973656.js"
+    "static/js/main.014efd92.js"
   ]
 }
