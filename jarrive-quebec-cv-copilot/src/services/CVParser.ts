@@ -38,28 +38,94 @@ export class CVParser {
         throw new Error('Unsupported file type');
       }
 
+      // Check if we got meaningful text
+      if (!text || text.length < 50) {
+        throw new Error('Insufficient text extracted from file. Please ensure the file contains readable text content.');
+      }
+
       return this.analyzeCVText(text);
     } catch (error) {
       console.error('Error parsing CV:', error);
-      throw new Error('Failed to parse CV file');
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('PDF')) {
+          throw new Error('PDF parsing failed. The file might be image-based or corrupted. Please try a text-based PDF or convert to DOCX format.');
+        } else if (error.message.includes('DOCX')) {
+          throw new Error('DOCX parsing is limited. Please upload a PDF version for better analysis.');
+        } else if (error.message.includes('Insufficient')) {
+          throw new Error('Not enough text content found. Please ensure your CV contains readable text (not just images).');
+        } else {
+          throw new Error('Failed to parse CV file. Please try a different file format or ensure the file is not corrupted.');
+        }
+      }
+      
+      throw new Error('Failed to parse CV file. Please try again with a different file.');
     }
   }
 
   private static async parsePDF(file: File): Promise<string> {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let text = '';
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let text = '';
 
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ');
-      text += pageText + '\n';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        try {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item: any) => item.str)
+            .join(' ');
+          text += pageText + '\n';
+        } catch (pageError) {
+          console.warn(`Error parsing page ${i}:`, pageError);
+          // Continue with next page
+        }
+      }
+
+      // If no text was extracted, try alternative method
+      if (!text.trim()) {
+        console.log('No text extracted from PDF, trying alternative method...');
+        text = await this.parsePDFAlternative(file);
+      }
+
+      return text.trim() || 'PDF content could not be extracted. Please ensure the PDF contains selectable text.';
+    } catch (error) {
+      console.error('PDF parsing error:', error);
+      throw new Error('Failed to parse PDF. Please ensure the file is not corrupted and contains readable text.');
     }
+  }
 
-    return text;
+  private static async parsePDFAlternative(file: File): Promise<string> {
+    // Alternative method for PDFs that might be image-based
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let text = '';
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        try {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: 1.0 });
+          
+          // Try to get text content with different options
+          const textContent = await page.getTextContent();
+          
+          const pageText = textContent.items
+            .map((item: any) => item.str)
+            .join(' ');
+          text += pageText + '\n';
+        } catch (pageError) {
+          console.warn(`Alternative parsing failed for page ${i}:`, pageError);
+        }
+      }
+
+      return text;
+    } catch (error) {
+      console.error('Alternative PDF parsing failed:', error);
+      return 'PDF parsing failed. Please try a different PDF file or convert to text format.';
+    }
   }
 
   private static async parseDOCX(file: File): Promise<string> {
@@ -71,7 +137,11 @@ export class CVParser {
         try {
           const content = e.target?.result as string;
           // Simple text extraction - in reality, you'd need a proper DOCX parser
-          resolve('DOCX parsing is being improved. Please upload a PDF version for better analysis.');
+          if (content && content.length > 0) {
+            resolve(content);
+          } else {
+            resolve('DOCX parsing is being improved. Please upload a PDF version for better analysis.');
+          }
         } catch (error) {
           reject(error);
         }
