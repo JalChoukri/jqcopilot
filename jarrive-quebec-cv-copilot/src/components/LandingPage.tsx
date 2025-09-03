@@ -1,13 +1,16 @@
 import React, { useState, useRef } from 'react';
+import { CVParser, CVData } from '../services/CVParser';
 
 interface LandingPageProps {
   language: 'fr' | 'en';
-  onFileUpload: (file: File) => void;
+  onFileUpload: (file: File, cvData: CVData) => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ language, onFileUpload }) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -20,7 +23,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ language, onFileUpload }) => 
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -29,22 +32,42 @@ const LandingPage: React.FC<LandingPageProps> = ({ language, onFileUpload }) => 
       const file = e.dataTransfer.files[0];
       if (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
         setSelectedFile(file);
+        setAnalysisError(null);
+      } else {
+        setAnalysisError(language === 'fr' ? 'Format de fichier non supporté. Utilisez PDF ou DOCX.' : 'Unsupported file format. Use PDF or DOCX.');
       }
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
         setSelectedFile(file);
+        setAnalysisError(null);
+      } else {
+        setAnalysisError(language === 'fr' ? 'Format de fichier non supporté. Utilisez PDF ou DOCX.' : 'Unsupported file format. Use PDF or DOCX.');
       }
     }
   };
 
-  const handleAnalyzeClick = () => {
+  const handleAnalyzeClick = async () => {
     if (selectedFile) {
-      onFileUpload(selectedFile);
+      setIsAnalyzing(true);
+      setAnalysisError(null);
+      
+      try {
+        const cvData = await CVParser.parseFile(selectedFile);
+        onFileUpload(selectedFile, cvData);
+      } catch (error) {
+        console.error('Analysis error:', error);
+        setAnalysisError(
+          language === 'fr' 
+            ? 'Erreur lors de l\'analyse du CV. Veuillez réessayer avec un autre fichier.'
+            : 'Error analyzing CV. Please try with a different file.'
+        );
+        setIsAnalyzing(false);
+      }
     }
   };
 
@@ -122,6 +145,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ language, onFileUpload }) => 
                   </p>
                 </div>
               )}
+              {analysisError && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-800">
+                    {analysisError}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
           
@@ -137,14 +167,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ language, onFileUpload }) => 
         {/* Analyze Button */}
         <button
           onClick={handleAnalyzeClick}
-          disabled={!selectedFile}
+          disabled={!selectedFile || isAnalyzing}
           className={`px-8 py-4 rounded-lg text-lg font-semibold transition-all ${
-            selectedFile
+            selectedFile && !isAnalyzing
               ? 'bg-quebec-blue text-white hover:bg-quebec-blue-dark shadow-lg hover:shadow-xl'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
         >
-          {language === 'fr' ? 'Analyser mon CV' : 'Analyze My CV'}
+          {isAnalyzing 
+            ? (language === 'fr' ? 'Analyse en cours...' : 'Analyzing...')
+            : (language === 'fr' ? 'Analyser mon CV' : 'Analyze My CV')
+          }
         </button>
       </div>
     </div>

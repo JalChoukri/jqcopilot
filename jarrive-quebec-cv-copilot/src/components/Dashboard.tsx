@@ -1,80 +1,59 @@
 import React, { useState } from 'react';
+import { CVData } from '../services/CVParser';
+import { AIAnalyzer, JobRecommendation, CVInsight, EnhancementSuggestion } from '../services/AIAnalyzer';
 
 interface DashboardProps {
   language: 'fr' | 'en';
   uploadedFile: File | null;
+  cvData: CVData | null;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ language, uploadedFile }) => {
+const Dashboard: React.FC<DashboardProps> = ({ language, uploadedFile, cvData }) => {
   const [activeTab, setActiveTab] = useState<'jobs' | 'insights' | 'enhancer'>('jobs');
   const [selectedCvItem, setSelectedCvItem] = useState<string | null>(null);
 
-  // Mock CV content - in real app this would come from file parsing
-  const mockCvContent = language === 'fr' 
-    ? `EXPERIENCE PROFESSIONNELLE
+  if (!cvData) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center">
+          <p className="text-gray-500">
+            {language === 'fr' 
+              ? 'Aucune donnée CV disponible. Veuillez téléverser un fichier CV.'
+              : 'No CV data available. Please upload a CV file.'
+            }
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-• Gestionnaire de projet marketing avec 5 ans d'expérience
-• Coordonné des campagnes publicitaires pour augmenter les ventes
-• Travaillé avec des équipes internationales
-
-COMPÉTENCES
-
-• Marketing digital et traditionnel
-• Gestion de projet
-• Analyse de données
-
-ÉDUCATION
-
-• Baccalauréat en Marketing, Université de Montréal`
-    : `PROFESSIONAL EXPERIENCE
-
-• Marketing Project Manager with 5 years of experience
-• Coordinated advertising campaigns to increase sales
-• Worked with international teams
-
-SKILLS
-
-• Digital and traditional marketing
-• Project management
-• Data analysis
-
-EDUCATION
-
-• Bachelor's degree in Marketing, University of Montreal`;
-
-  const jobRecommendations = [
-    {
-      title: language === 'fr' ? 'Gestionnaire Marketing' : 'Marketing Manager',
-      reason: language === 'fr' 
-        ? 'Votre expérience en gestion de projet et coordination de campagnes correspond parfaitement à ce rôle.'
-        : 'Your project management experience and campaign coordination perfectly match this role.'
-    },
-    {
-      title: language === 'fr' ? 'Spécialiste Marketing Digital' : 'Digital Marketing Specialist',
-      reason: language === 'fr'
-        ? 'Vos compétences en marketing digital et analyse de données sont très recherchées.'
-        : 'Your digital marketing skills and data analysis are highly sought after.'
-    },
-    {
-      title: language === 'fr' ? 'Coordonnateur Marketing' : 'Marketing Coordinator',
-      reason: language === 'fr'
-        ? 'Votre expérience en coordination d\'équipes internationales est un atout majeur.'
-        : 'Your experience coordinating international teams is a major asset.'
-    }
-  ];
-
-  const cvInsights = {
-    vagueStatement: language === 'fr' 
-      ? '"Coordonné des campagnes publicitaires pour augmenter les ventes"'
-      : '"Coordinated advertising campaigns to increase sales"',
-    suggestion: language === 'fr'
-      ? 'Quantifiez votre impact : "Coordonné 15+ campagnes publicitaires, augmentant les ventes de 25% en moyenne et générant 2M$ de revenus supplémentaires"'
-      : 'Quantify your impact: "Coordinated 15+ advertising campaigns, increasing sales by 25% on average and generating $2M in additional revenue"'
-  };
+  // Generate real AI analysis
+  const jobRecommendations = AIAnalyzer.generateJobRecommendations(cvData, language);
+  const cvInsights = AIAnalyzer.generateCVInsights(cvData, language);
+  const quebecInsights = AIAnalyzer.generateQuebecSpecificInsights(cvData, language);
+  const allInsights = [...cvInsights, ...quebecInsights];
 
   const handleCvItemClick = (item: string) => {
     setSelectedCvItem(item);
     setActiveTab('enhancer');
+  };
+
+  const getPriorityColor = (priority: 'high' | 'medium' | 'low') => {
+    switch (priority) {
+      case 'high': return 'border-red-400 bg-red-50';
+      case 'medium': return 'border-yellow-400 bg-yellow-50';
+      case 'low': return 'border-blue-400 bg-blue-50';
+      default: return 'border-gray-400 bg-gray-50';
+    }
+  };
+
+  const getPriorityText = (priority: 'high' | 'medium' | 'low') => {
+    switch (priority) {
+      case 'high': return language === 'fr' ? 'Élevée' : 'High';
+      case 'medium': return language === 'fr' ? 'Moyenne' : 'Medium';
+      case 'low': return language === 'fr' ? 'Faible' : 'Low';
+      default: return '';
+    }
   };
 
   return (
@@ -86,10 +65,15 @@ EDUCATION
             <h2 className="text-xl font-semibold text-gray-900">
               {language === 'fr' ? 'Votre CV' : 'Your CV'}
             </h2>
+            {uploadedFile && (
+              <p className="text-sm text-gray-500 mt-1">
+                {language === 'fr' ? 'Fichier analysé:' : 'Analyzed file:'} {uploadedFile.name}
+              </p>
+            )}
           </div>
           <div className="p-6">
             <textarea
-              value={mockCvContent}
+              value={cvData.text}
               readOnly
               className="w-full h-96 p-4 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-quebec-blue focus:border-transparent"
               onClick={(e) => {
@@ -109,6 +93,12 @@ EDUCATION
             <h2 className="text-xl font-semibold text-gray-900">
               {language === 'fr' ? 'Analyses par l\'IA' : 'AI Insights'}
             </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {language === 'fr' 
+                ? `${cvData.skills.length} compétences détectées, ${cvData.experience.length} expériences trouvées`
+                : `${cvData.skills.length} skills detected, ${cvData.experience.length} experiences found`
+              }
+            </p>
           </div>
           
           {/* Tabs */}
@@ -151,56 +141,92 @@ EDUCATION
           <div className="p-6">
             {activeTab === 'jobs' && (
               <div className="space-y-4">
-                {jobRecommendations.map((job, index) => (
-                  <div key={index} className="p-4 border border-gray-200 rounded-lg hover:border-quebec-blue transition-colors">
-                    <h3 className="font-semibold text-gray-900 mb-2">{job.title}</h3>
-                    <p className="text-sm text-gray-600">{job.reason}</p>
+                {jobRecommendations.length > 0 ? (
+                  jobRecommendations.map((job, index) => (
+                    <div key={index} className="p-4 border border-gray-200 rounded-lg hover:border-quebec-blue transition-colors">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold text-gray-900">{job.title}</h3>
+                        <span className="text-sm bg-quebec-blue text-white px-2 py-1 rounded">
+                          {job.matchScore}%
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">{job.reason}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p className="text-sm">
+                      {language === 'fr' 
+                        ? 'Aucune recommandation d\'emploi trouvée. Ajoutez plus de compétences à votre CV.'
+                        : 'No job recommendations found. Add more skills to your CV.'
+                      }
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
             )}
 
             {activeTab === 'insights' && (
-              <div className="p-4 border border-gray-200 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  {language === 'fr' ? 'Opportunité d\'impact' : 'Opportunity for Impact'}
-                </h3>
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                  <p className="text-sm text-gray-700 italic">
-                    "{cvInsights.vagueStatement}"
-                  </p>
-                </div>
-                <p className="text-sm text-gray-600">
-                  {cvInsights.suggestion}
-                </p>
+              <div className="space-y-4">
+                {allInsights.length > 0 ? (
+                  allInsights.map((insight, index) => (
+                    <div key={index} className={`p-4 border-l-4 rounded-md ${getPriorityColor(insight.priority)}`}>
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold text-gray-900">{insight.title}</h3>
+                        <span className="text-xs bg-white px-2 py-1 rounded border">
+                          {getPriorityText(insight.priority)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 mb-2">{insight.description}</p>
+                      <p className="text-sm text-gray-600">
+                        <strong>{language === 'fr' ? 'Suggestion:' : 'Suggestion:'}</strong> {insight.suggestion}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p className="text-sm">
+                      {language === 'fr' 
+                        ? 'Votre CV semble bien structuré ! Aucun problème majeur détecté.'
+                        : 'Your CV appears well-structured! No major issues detected.'
+                      }
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === 'enhancer' && (
               <div className="text-center py-8">
                 {selectedCvItem ? (
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-gray-900">
-                      {language === 'fr' ? 'Suggestion d\'amélioration' : 'Enhancement Suggestion'}
-                    </h3>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm text-gray-600 mb-3">
-                        {language === 'fr' ? 'Texte sélectionné:' : 'Selected text:'}
-                      </p>
-                      <p className="text-sm text-gray-800 italic">"{selectedCvItem}"</p>
-                    </div>
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <p className="text-sm text-gray-600 mb-3">
-                        {language === 'fr' ? 'Suggestion de l\'IA:' : 'AI Suggestion:'}
-                      </p>
-                      <p className="text-sm text-green-800">
-                        {language === 'fr' 
-                          ? 'Quantifiez cette expérience avec des chiffres concrets et des résultats mesurables.'
-                          : 'Quantify this experience with concrete numbers and measurable results.'
-                        }
-                      </p>
-                    </div>
-                  </div>
+                  (() => {
+                    const suggestion = AIAnalyzer.generateEnhancementSuggestions(cvData, selectedCvItem, language);
+                    return (
+                      <div className="space-y-4">
+                        <h3 className="font-semibold text-gray-900">
+                          {language === 'fr' ? 'Suggestion d\'amélioration' : 'Enhancement Suggestion'}
+                        </h3>
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <p className="text-sm text-gray-600 mb-3">
+                            {language === 'fr' ? 'Texte sélectionné:' : 'Selected text:'}
+                          </p>
+                          <p className="text-sm text-gray-800 italic">"{selectedCvItem}"</p>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg">
+                          <p className="text-sm text-gray-600 mb-3">
+                            {language === 'fr' ? 'Suggestion de l\'IA:' : 'AI Suggestion:'}
+                          </p>
+                          <p className="text-sm text-green-800 mb-2">{suggestion.suggestion}</p>
+                          <p className="text-xs text-gray-600">
+                            <strong>{language === 'fr' ? 'Raison:' : 'Reason:'}</strong> {suggestion.reason}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            <strong>{language === 'fr' ? 'Impact:' : 'Impact:'}</strong> {suggestion.impact}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()
                 ) : (
                   <div className="text-gray-500">
                     <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
